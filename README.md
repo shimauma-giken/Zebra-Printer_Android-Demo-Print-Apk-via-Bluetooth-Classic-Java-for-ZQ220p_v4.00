@@ -1,4 +1,4 @@
-Zebra プリンタ - Bluetooth 印刷デモ用のAndroid Apkとソースコード - Android 14 (ZQ220p + ZQ220p SDK）
+## ZQ220+開発ガイド_Android 14向け (ZQ220p + Forerunner Android SDK v1.1）
 
 Update: 2026/04/28
 
