@@ -1,0 +1,272 @@
+package com.example.myapplication;
+
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Bundle;
+import android.util.Log;
+
+import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import com.zebra.printer.sdk.ZebraPrinter;
+
+import java.io.UnsupportedEncodingException;
+
+public class MainActivity extends AppCompatActivity {
+
+    private static final int REQUEST_BLUETOOTH_PERMISSIONS = 1;
+    private static final String btMac = "04:7F:0E:71:7F:53";
+
+    private static final String strCpcl01 =
+            "! 0 200 200 400 1\r\n" +
+                    "COUNTRY JAPAN-S\r\n" +
+                    "SETMAG 1 1\r\n" +
+                    "SETBOLD 2\r\n" +
+                    "T GT16NF55.CPF 0 0 0 サイズ１６\r\n" +
+                    "T GT24NF55.CPF 0 0 30 サイズ２４\r\n" +
+                    "PRINT\r\n";
+    String TAG1 = "ZBR_";
+    String tagLogd = "NULL";
+
+    long start = 0;
+    long end = 0;
+
+    boolean bOpen = false;
+    int printerStatus=9999;
+    String strSgdCmd = "print.tone";
+    StringBuffer strSgdGet = new StringBuffer();
+    String strSgdSet = "";
+
+
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
+        setContentView(R.layout.activity_main);
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
+        processMain();
+    }
+
+    private void processMain(){
+        tagLogd = TAG1 + new Throwable()
+                .getStackTrace()[0]
+                .getMethodName();
+
+        int count=0;
+
+        checkAndRequestBluetoothPermissions();
+
+        setlog();
+
+        open();
+
+        getPrinterStatus();
+
+        try {
+            Thread.sleep(1000); // 3000ms = 3秒
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        for (int i = 0; i < 1; i++) {
+            Log.d(tagLogd, "## Print  " + String.valueOf(count++));
+            cpcl_print();
+
+            try {
+                Thread.sleep(500); // mili-seconds
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+        }
+
+        try {
+            Thread.sleep(1000); // 3000ms = 3秒
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        getvar();
+        setvar();
+
+        close();
+    }
+
+
+    public void open(){
+        tagLogd = TAG1 + new Throwable()
+                .getStackTrace()[0]
+                .getMethodName();
+        start = System.currentTimeMillis();
+        printerStatus = ZebraPrinter.Open(0, btMac);
+        end = System.currentTimeMillis();
+        Log.d(tagLogd, "Status: " + String.valueOf(printerStatus));
+        Log.d(tagLogd, "Process Time: " + (end-start) + " ms");
+    }
+
+    public void close(){
+        tagLogd = TAG1 + new Throwable()
+                .getStackTrace()[0]
+                .getMethodName();
+        start = System.currentTimeMillis();
+        printerStatus = ZebraPrinter.Close();
+        end = System.currentTimeMillis();
+        Log.d(tagLogd, "Status: " + String.valueOf(printerStatus));
+        Log.d(tagLogd, "Process Time: " + (end-start) + " ms");
+    }
+
+    public void setlog(){
+        //
+        // Debugging purpose only
+        //
+        ZebraPrinter.SetLog(3);
+    }
+    
+    public void getPrinterStatus(){
+        //
+        // PROCESS: GET PRINTER STATUS
+        //
+        tagLogd = TAG1 + new Throwable()
+                .getStackTrace()[0]
+                .getMethodName();
+        start = System.currentTimeMillis();
+        printerStatus = ZebraPrinter.GetPrinterState();
+        end = System.currentTimeMillis();
+        Log.d(tagLogd, "Printer status is " + String.valueOf(printerStatus) + ".");
+        Log.d(tagLogd, "Process Time: " + (end-start) + " ms");
+    }
+    
+    public void getvar(){
+        //
+        // PROCESS: GETVAR
+        //
+        strSgdGet = new StringBuffer();
+        strSgdCmd = "power.percent_raw";
+        start = System.currentTimeMillis();
+        printerStatus = ZebraPrinter.SGD_GetVar(strSgdCmd, strSgdGet);
+        //textView.setText("NO STATUS.");
+        end = System.currentTimeMillis();
+        Log.d(tagLogd, "Status: " + String.valueOf(printerStatus));
+        //Log.d(tagLogd, "Battery remain is : " + String.valueOf(strSgdGet).replace("ready", "") + " %");
+        Log.d(tagLogd, "Battery remain is : " + String.valueOf(strSgdGet) + " %");
+        Log.d(tagLogd, "Process Time: " + (end-start) + " ms");
+    }
+
+    public void setvar(){
+        //
+        // PROCESS: SETVAR
+        //
+        strSgdGet = new StringBuffer();
+        strSgdSet = "100";
+        strSgdCmd = "print.tone";
+        start = System.currentTimeMillis();
+        printerStatus = ZebraPrinter.SGD_SetVar(strSgdCmd, strSgdSet);
+        printerStatus = ZebraPrinter.SGD_GetVar(strSgdCmd, strSgdGet);
+        end = System.currentTimeMillis();
+        Log.d(tagLogd, "Print.tone setting is  " +  String.valueOf(strSgdGet) + ".");
+        Log.d(tagLogd, "Process Time: " + (end-start) + " ms");
+    }
+    public void cpcl_print(){
+        tagLogd = TAG1 + new Throwable()
+                .getStackTrace()[0]
+                .getMethodName();
+
+        //String strCpcl = "sample text";
+
+        String strCpcl = strCpcl01;
+        start = System.currentTimeMillis();
+
+        try {
+            byte[] sjisData = strCpcl.getBytes("Shift_JIS");
+            printerStatus = ZebraPrinter.WriteData(sjisData);
+        }catch(UnsupportedEncodingException e){
+            e.printStackTrace();
+        }
+        //textView.setText("NO STATUS.");
+        end = System.currentTimeMillis();
+        Log.d(tagLogd, "Status: " + String.valueOf(printerStatus));
+        Log.d(tagLogd, "Process Time: " + (end-start) + " ms");
+    }
+
+    private void checkAndRequestBluetoothPermissions() {
+
+        tagLogd = TAG1 + new Throwable()
+                .getStackTrace()[0]
+                .getMethodName();
+
+        String[] permissions = {
+                Manifest.permission.BLUETOOTH_CONNECT,
+                Manifest.permission.BLUETOOTH_SCAN,
+                Manifest.permission.ACCESS_FINE_LOCATION
+        };
+
+        // Check permission
+        boolean permissionsNeeded = false;
+
+        for (String permission : permissions) {
+            // boolean granted
+            // == false: User permission is necessary
+            // == true:  User permission is unnecessary
+            boolean granted = ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED;
+
+            if (!granted){
+                permissionsNeeded = true;
+                //break;
+            }
+
+            // DEBUG LOG
+            Log.d(tagLogd, "Permission: " + permission + " is " + granted);
+
+        }
+
+        // Request premission if needed
+        if (permissionsNeeded) {
+            // DEBUG LOG
+            Log.d(tagLogd, "Bluetooth permission is requested to user.");
+            ActivityCompat.requestPermissions(this, permissions, REQUEST_BLUETOOTH_PERMISSIONS);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        tagLogd = TAG1 + new Throwable()
+                .getStackTrace()[0]
+                .getMethodName();
+
+        if (requestCode == REQUEST_BLUETOOTH_PERMISSIONS) {
+
+            boolean allGranted = true;
+
+            for (int result : grantResults) {
+                if (result != PackageManager.PERMISSION_GRANTED) {
+                    allGranted = false;
+                    break;
+                }
+            }
+
+            if (allGranted) {
+                // Bluetooth処理開始
+                // DEBUG LOG
+                Log.d(tagLogd, String.valueOf(allGranted));
+            } else {
+                // 拒否時処理（説明 or 機能制限）
+                // DEBUG LOG
+                Log.d(tagLogd, String.valueOf(allGranted));
+            }
+        }
+    }
+
+
+}
